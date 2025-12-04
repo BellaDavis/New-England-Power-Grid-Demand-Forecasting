@@ -110,21 +110,33 @@ df_processed = load_zone_df.copy()
 
 # Adding extra features such as if the day is a day of the week.
 df_processed['Hour'] = df_processed.index.hour
-df_processed['DayOfWeek'] = df_processed.index.weekday  # Monday=0 - Sunday=6
+df_processed['Day_of_Week'] = df_processed.index.weekday  # Monday=0 - Sunday=6
 
 # TODO: Add Lag for features continuous features?
 
 # One-Hot encoding.
-cat_cols = ['Zone', 'Hour', 'DayOfWeek']
+cat_cols = ['Zone', 'Hour', 'Day_of_Week']
 df_encoded = pd.get_dummies(df_processed, columns=cat_cols, drop_first=False)
 
-# Add a holiday column
-years_covered = [2020, 2021, 2022, 2023, 2024, 2025]
-us_holidays = []
+# Add holiday columns where 0 is not a holiday, and 1 is a holiday
 
-for year in years_covered:
+df_processed['Is_Holiday'] = 0
+
+start_year = 2020 # Adjust years if needed
+end_year = 2025
+
+us_holidays = [] # Dict of US holidays
+
+for year in range(start_year, end_year+1):
     for date, name in sorted(holidays.US(years=year).items()):
         us_holidays.append(f'{date}:{name}')
+
+us_holidays = set(holidays.US(years=range(start_year, end_year + 1)).keys())
+
+# Check for holidays in the data and set them to 1
+df_processed.loc[df_processed.index.normalize().isin(us_holidays), 'Is_Holiday'] = 1
+
+print(df_processed)
 
 
 
