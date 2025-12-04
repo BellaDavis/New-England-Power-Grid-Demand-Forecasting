@@ -1,8 +1,17 @@
 from glob import glob
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from datetime import date # For adding holiday information.
+import holidays
+
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 
 # TODO: No extra features yet, such as weather information and calendar events. JUST ISO NEW England Demand Reports
+
+###################### DATA PRE-PROCESSING ######################
 
 # Load Data files
 files = glob("Data/Hourly/*xlsx")  # adjust path if needed
@@ -69,27 +78,57 @@ load_zone_df.sort_index(inplace=True)
 # Estimate missing values
 load_zone_df['Load_MW'] = load_zone_df['Load_MW'].interpolate(method='linear')
 
-print(f"Load Data Shape: {load_zone_df.shape}")
-print(load_zone_df)
+#print(f"Load Data Shape: {load_zone_df.shape}")
+#print(load_zone_df)
 
 # Plot power demand from each zone on a graph
 
-for zone, df_zone in load_zone_df.groupby('Zone'):
-    plt.plot(df_zone.index, df_zone['Load_MW'], label=zone)
+# for zone, df_zone in load_zone_df.groupby('Zone'):
+#     plt.plot(df_zone.index, df_zone['Load_MW'], label=zone)
+#
+# plt.title("ISO-New England Load by Zone")
+# plt.xlabel("DateTime")
+# plt.ylabel("Load (MW)")
+# plt.legend()
+# plt.show()
+#
+# # Plot one zone
+# zone = 'VT' # Adjust if needed
+#
+# ct_df = load_zone_df[load_zone_df['Zone'] == zone]
+# plt.plot(ct_df.index, ct_df['Load_MW'], label=zone)
+# plt.title(f"{zone} Load MW ")
+# plt.xlabel("DateTime")
+# plt.ylabel("Load (MW)")
+# plt.legend()
+# plt.show()
 
-plt.title("ISO-New England Load by Zone")
-plt.xlabel("DateTime")
-plt.ylabel("Load (MW)")
-plt.legend()
-plt.show()
 
-# Plot one zone
-zone = 'VT' # Adjust if needed
+###################### FEATURE ENGINEERING ######################
 
-ct_df = load_zone_df[load_zone_df['Zone'] == zone]
-plt.plot(ct_df.index, ct_df['Load_MW'], label=zone)
-plt.title(f"{zone} Load MW ")
-plt.xlabel("DateTime")
-plt.ylabel("Load (MW)")
-plt.legend()
-plt.show()
+df_processed = load_zone_df.copy()
+
+# Adding extra features such as if the day is a day of the week.
+df_processed['Hour'] = df_processed.index.hour
+df_processed['DayOfWeek'] = df_processed.index.weekday  # Monday=0 - Sunday=6
+
+# TODO: Add Lag for features continuous features?
+
+# One-Hot encoding.
+cat_cols = ['Zone', 'Hour', 'DayOfWeek']
+df_encoded = pd.get_dummies(df_processed, columns=cat_cols, drop_first=False)
+
+# Add a holiday column
+years_covered = [2020, 2021, 2022, 2023, 2024, 2025]
+us_holidays = []
+
+for year in years_covered:
+    for date, name in sorted(holidays.US(years=year).items()):
+        us_holidays.append(f'{date}:{name}')
+
+
+
+
+
+
+
