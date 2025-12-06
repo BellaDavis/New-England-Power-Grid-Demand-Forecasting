@@ -22,13 +22,12 @@ df_list = []
 Load_Zones = ['CT', 'ME', 'NEMA', 'NH', 'RI', 'SEMA', 'VT', 'WCMA']
 
 for f in files:
-    print(f'Pulling ISO-New England data')
 
     try:
         # Read all sheets
         df = pd.read_excel(f, sheet_name=None)
     except Exception as e:
-        print(f"Error reading file {f}: {e}. Skipping.")
+        print(f"Error reading file {f}: {e}.")
         break
 
     # Combine data from all the load zones, adding the sheet name as new feature 'Zone'
@@ -110,21 +109,80 @@ df_processed = load_zone_df.copy()
 
 # Adding extra features such as if the day is a day of the week.
 df_processed['Hour'] = df_processed.index.hour
-df_processed['DayOfWeek'] = df_processed.index.weekday  # Monday=0 - Sunday=6
+df_processed['Day_of_Week'] = df_processed.index.weekday  # Monday=0 - Sunday=6
 
 # TODO: Add Lag for features continuous features?
 
 # One-Hot encoding.
-cat_cols = ['Zone', 'Hour', 'DayOfWeek']
+cat_cols = ['Zone', 'Hour', 'Day_of_Week']
 df_encoded = pd.get_dummies(df_processed, columns=cat_cols, drop_first=False)
 
-# Add a holiday column
-years_covered = [2020, 2021, 2022, 2023, 2024, 2025]
-us_holidays = []
+# Add holiday columns where 0 is not a holiday, and 1 is a holiday
 
-for year in years_covered:
+df_processed['Is_Holiday'] = 0
+
+start_year = 2020 # Adjust years if needed
+end_year = 2025
+
+us_holidays = [] # Dict of US holidays
+
+for year in range(start_year, end_year+1):
     for date, name in sorted(holidays.US(years=year).items()):
         us_holidays.append(f'{date}:{name}')
+
+us_holidays = set(holidays.US(years=range(start_year, end_year + 1)).keys())
+
+# Check for holidays in the data and set them to 1
+df_processed.loc[df_processed.index.normalize().isin(us_holidays), 'Is_Holiday'] = 1
+
+print(df_processed)
+
+# Add the cooling degree day and heating degree days from the monthly data.
+# TODO: Unable to find hourly weather data for the years and zones we need.
+#   Maybe in another life it would have been recorded with the hourly demand data.
+
+files = glob("Data/Monthly/*xlsx")  # adjust path if needed
+# Dataframe to store data
+monthly_data = []
+
+# List of the 8 SMD Load Zones in New England
+Load_Zones = ['CT', 'ME', 'NEMA', 'NH', 'RI', 'SEMA', 'VT', 'WCMA']
+
+for f in files:
+    try:
+        # Read all sheets
+        new_df = pd.read_excel(f, sheet_name=None)
+    except Exception as e:
+        print(f"Error reading file {f}: {e}.")
+        break
+
+    for zone_name, data in new_df.items():
+            data = data.copy()
+            if zone_name in Load_Zones:
+                df_list.append(data)
+
+new_df = pd.concat(df_list, ignore_index=True)
+
+# Select relevant columns
+features = ['Year', 'Month', 'CDD', 'HDD']
+
+new_df = new_df[features]
+
+# 3. Handle missing values (drop rows with NaN)
+# TODO: Still a work in progress.
+
+print(new_df)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
